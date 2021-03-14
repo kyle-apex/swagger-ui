@@ -4,8 +4,9 @@ import ImPropTypes from "react-immutable-proptypes"
 import { Map, OrderedMap, List } from "immutable"
 import { getCommonExtensions, getSampleSchema, stringify, isEmptyValue } from "core/utils"
 
-export const getDefaultRequestBodyValue = (requestBody, mediaType, activeExamplesKey) => {
+export const getDefaultRequestBodyValue = (requestBody, mediaType, activeExamplesKey, maxModelExpandDepth) => {
   const mediaTypeValue = requestBody.getIn(["content", mediaType])
+  console.log('get defaultRequestBodyValue');
   const schema = mediaTypeValue.get("schema").toJS()
 
   const hasExamplesKey = mediaTypeValue.get("examples") !== undefined
@@ -17,15 +18,17 @@ export const getDefaultRequestBodyValue = (requestBody, mediaType, activeExample
       "value"
     ])
     : exampleSchema
-
+console.log('schema',schema);
   const exampleValue = getSampleSchema(
     schema,
     mediaType,
     {
-      includeWriteOnly: true
+      includeWriteOnly: true,
+      maxModelExpandDepth: maxModelExpandDepth
     },
     mediaTypeExample
   )
+  //console.log('exampleValue',exampleValue);
   return stringify(exampleValue)
 }
 
@@ -74,8 +77,8 @@ const RequestBody = ({
   const ExamplesSelectValueRetainer = getComponent("ExamplesSelectValueRetainer")
   const Example = getComponent("Example")
   const ParameterIncludeEmpty = getComponent("ParameterIncludeEmpty")
-
-  const { showCommonExtensions } = getConfigs()
+console.log('getConfigs',getConfigs());
+  const { showCommonExtensions, maxModelExpandDepth } = getConfigs()
 
   const requestBodyDescription = (requestBody && requestBody.get("description")) || null
   const requestBodyContent = (requestBody && requestBody.get("content")) || new OrderedMap()
@@ -87,10 +90,14 @@ const RequestBody = ({
   const sampleForMediaType = rawExamplesOfMediaType?.map((container, key) => {
     const val = container?.get("value", null)
     if(val) {
+      console.log('called from here');
+
+console.log('getConfigs',getConfigs(),getConfigs().maxModelExpandDepth);
       container = container.set("value",   getDefaultRequestBodyValue(
         requestBody,
         contentType,
         key,
+        maxModelExpandDepth
       ), val)
     }
     return container
@@ -229,11 +236,14 @@ const RequestBody = ({
       </table>
     </div>
   }
+  console.log('called from there1');
 
+  console.log('getConfigs',getConfigs(),getConfigs().maxModelExpandDepth);
   const sampleRequestBody = getDefaultRequestBodyValue(
     requestBody,
     contentType,
     activeExamplesKey,
+    maxModelExpandDepth
   )
 
   return <div>

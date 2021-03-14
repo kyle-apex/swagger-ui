@@ -49,6 +49,7 @@ export default function SwaggerUI(opts) {
     showMutatedRequest: true,
     defaultModelRendering: "example",
     defaultModelExpandDepth: 1,
+    maxModelExpandDepth: -1,
     defaultModelsExpandDepth: 1,
     showExtensions: false,
     showCommonExtensions: false,

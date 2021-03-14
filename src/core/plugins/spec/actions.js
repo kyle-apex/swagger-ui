@@ -246,7 +246,7 @@ const debResolveSubtrees = debounce(async () => {
   } catch(e) {
     console.error(e)
   }
-
+console.log('resolved subtree called?',batchResult.resultMap);
   specActions.updateResolvedSubtree([], batchResult.resultMap)
 }, 35)
 

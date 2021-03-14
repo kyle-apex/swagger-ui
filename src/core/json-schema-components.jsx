@@ -46,6 +46,7 @@ export class JsonSchemaForm extends Component {
   }
 
   render() {
+    console.log('json schema component');
     let { schema, errors, value, onChange, getComponent, fn, disabled } = this.props
     const format = schema && schema.get ? schema.get("format") : null
     const type = schema && schema.get ? schema.get("type") : null

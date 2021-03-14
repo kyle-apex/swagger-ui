@@ -28,6 +28,7 @@ export default class ModelWrapper extends Component {
   }
 
   render(){
+    console.log('model wrapper');
     let { getComponent, getConfigs } = this.props
     const Model = getComponent("Model")
 

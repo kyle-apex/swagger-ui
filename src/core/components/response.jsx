@@ -88,7 +88,7 @@ export default class Response extends React.Component {
 
     let { inferSchema } = fn
     let isOAS3 = specSelectors.isOAS3()
-    const { showExtensions } = getConfigs()
+    const { showExtensions, maxModelExpandDepth } = getConfigs()
 
     let extensions = showExtensions ? getExtensions(response) : null
     let headers = response.get("headers")
@@ -125,7 +125,8 @@ export default class Response extends React.Component {
     let shouldOverrideSchemaExample = false
     let sampleSchema
     let sampleGenConfig = {
-      includeReadOnly: true
+      includeReadOnly: true,
+      maxModelExpandDepth: maxModelExpandDepth
     }
 
     // Goal: find an example value for `sampleResponse`
@@ -154,7 +155,7 @@ export default class Response extends React.Component {
         shouldOverrideSchemaExample = true
       }
     }
-
+console.log('gtting schema here',sampleGenConfig)
     const sampleResponse = getSampleSchema(
       sampleSchema,
       activeContentType,
@@ -231,7 +232,7 @@ export default class Response extends React.Component {
               getComponent={ getComponent }
               getConfigs={ getConfigs }
               specSelectors={ specSelectors }
-              schema={ fromJSOrdered(schema) }
+              schema={ fromJSOrdered(schema,new WeakMap(),true) }
               example={ example }
               includeReadOnly={ true }/>
           ) : null }

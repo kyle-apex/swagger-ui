@@ -106,7 +106,8 @@ export default class ParameterRow extends Component {
     // getSampleSchema could return null
     const generatedSampleValue = schema ? getSampleSchema(schema.toJS(), parameterMediaType, {
 
-      includeWriteOnly: true
+      includeWriteOnly: true,
+      //maxModelExpandDepth: maxModelExpandDepth
     }) : null
 
     if (!paramWithMeta || paramWithMeta.get("value") !== undefined) {
@@ -186,7 +187,9 @@ export default class ParameterRow extends Component {
 
     let isOAS3 = specSelectors.isOAS3()
 
-    const { showExtensions, showCommonExtensions } = getConfigs()
+    console.log('top of render parameter-row');
+
+    const { showExtensions, showCommonExtensions, maxModelExpandDepth } = getConfigs()
 
     if(!param) {
       param = rawParam
@@ -198,7 +201,7 @@ export default class ParameterRow extends Component {
     const JsonSchemaForm = getComponent("JsonSchemaForm")
     const ParamBody = getComponent("ParamBody")
     let inType = param.get("in")
-    let bodyParam = inType !== "body" ? null
+    let bodyParam = null; /*inType !== "body" ? null
       : <ParamBody getComponent={getComponent}
                    getConfigs={ getConfigs }
                    fn={fn}
@@ -210,7 +213,7 @@ export default class ParameterRow extends Component {
                    isExecute={ isExecute }
                    specSelectors={ specSelectors }
                    pathMethod={ pathMethod }
-      />
+      />*/
 
     const ModelExample = getComponent("modelExample")
     const Markdown = getComponent("Markdown", true)
@@ -218,7 +221,7 @@ export default class ParameterRow extends Component {
     const ParameterIncludeEmpty = getComponent("ParameterIncludeEmpty")
     const ExamplesSelectValueRetainer = getComponent("ExamplesSelectValueRetainer")
     const Example = getComponent("Example")
-
+console.log('before get schema', param);
     let { schema } = getParameterSchema(param, { isOAS3 })
     let paramWithMeta = specSelectors.parameterWithMetaByIdentity(pathMethod, rawParam) || Map()
 
@@ -254,6 +257,8 @@ export default class ParameterRow extends Component {
       isDisplayParamEnum = true
     }
 
+    console.log('before get example');
+
     // Default and Example Value for readonly doc
     if ( param !== undefined ) {
       if (schema) {
@@ -267,6 +272,12 @@ export default class ParameterRow extends Component {
         paramExample = param.get("x-example")
       }
     }
+
+    console.log('parameter row',isOAS3, param.get("examples"));
+    console.log('bodyParam2',bodyParam);
+    console.log('isExecute',isExecute);
+    console.log('schema',schema);
+    console.log('paramExample',paramExample);
 
     return (
       <tr data-param-name={param.get("name")} data-param-in={param.get("in")}>

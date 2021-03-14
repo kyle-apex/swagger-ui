@@ -62,7 +62,8 @@ export const shouldRetainRequestBodyValue = onlyOAS3((state, path, method) => {
 )
 
 export const hasUserEditedBody = (state, path, method) => (system) => {
-  const {oas3Selectors, specSelectors} = system.getSystem()
+  console.log('system',system.getSystem(),system.getConfigs());
+  const {oas3Selectors, specSelectors, getConfigs} = system.getSystem()
   const spec = specSelectors.specJson()
   if(isOAS3Helper(spec)) {
     let userHasEditedBody = false
@@ -83,7 +84,8 @@ export const hasUserEditedBody = (state, path, method) => (system) => {
           path, method,
           "requestBody",
           "requestBody",
-        )
+        ),
+        getConfigs().maxModelExpandDepth
       )
       userHasEditedBody = !!userEditedRequestBody && userEditedRequestBody !== currentMediaTypeDefaultBodyValue
     }

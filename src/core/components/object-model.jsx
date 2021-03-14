@@ -65,6 +65,8 @@ export default class ObjectModel extends Component {
     const oneOf = specSelectors.isOAS3() ? schema.get("oneOf") : null
     const not = specSelectors.isOAS3() ? schema.get("not") : null
 
+    console.log('object-model');
+
     const titleEl = title && <span className="model-title">
       { isRef && schema.get("$$ref") && <span className="model-hint">{ schema.get("$$ref") }</span> }
       <span className="model-title__text">{ title }</span>

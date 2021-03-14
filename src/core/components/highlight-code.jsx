@@ -40,6 +40,7 @@ export default class HighlightCode extends Component {
   }
 
   render () {
+    console.log('in highlight code render');
     let { value, className, downloadable, getConfigs, canCopy, language } = this.props
 
     const config = getConfigs ? getConfigs() : {syntaxHighlight: {activated: true, theme: "agate"}}

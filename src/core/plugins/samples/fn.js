@@ -111,7 +111,19 @@ const liftSampleHelper = (oldSchema, target, config = {}) => {
 }
 
 export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = undefined, respectXML = false) => {
+  return sampleFromSchemaGenericWith(schema, config, exampleOverride, respectXML, []);
+}
+
+const sampleFromSchemaGenericWith = (schema, config={}, exampleOverride = undefined, respectXML = false, stack) => {
   schema = objectify(schema)
+
+  // return if this is a circular reference
+  if (~stack.indexOf(schema)) {
+    //return
+  }
+
+  stack.push(schema)
+
   let usePlainValue = exampleOverride !== undefined || schema.example !== undefined || schema && schema.default !== undefined
   // first check if there is the need of combining this schema with others required by allOf
   const hasOneOf = !usePlainValue && schema && schema.oneOf && schema.oneOf.length > 0
@@ -292,7 +304,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
         }
       }
 
-      let t = sampleFromSchemaGeneric(schema && props[propName] || undefined, config, overrideE, respectXML)
+      let t = sampleFromSchemaGenericWith(schema && props[propName] || undefined, config, overrideE, respectXML, stack)
       if(!canAddProperty(propName)) {
         return
       }
@@ -309,7 +321,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
       if(!canAddProperty(propName)) {
         return
       }
-      res[propName] = sampleFromSchemaGeneric(props[propName], config, overrideE, respectXML)
+      res[propName] = sampleFromSchemaGenericWith(props[propName], config, overrideE, respectXML, stack)
       propertyAddedCounter++
     }
   }
@@ -327,7 +339,8 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
 
     // if json just return
     if(!respectXML) {
-      // spacial case yaml parser can not know about
+      stack.pop();
+      // special case yaml parser can not know about
       if(typeof sample === "number" && type === "string") {
         return `${sample}`
       }
@@ -353,6 +366,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
     if(type === "array") {
       if (!Array.isArray(sample)) {
         if(typeof sample === "string") {
+          stack.pop();
           return sample
         }
         sample = [sample]
@@ -365,7 +379,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
         itemSchema.xml.name = itemSchema.xml.name || xml.name
       }
       let itemSamples = sample
-        .map(s => sampleFromSchemaGeneric(itemSchema, config, s, respectXML))
+        .map(s => sampleFromSchemaGenericWith(itemSchema, config, s, respectXML, stack))
       itemSamples = handleMinMaxItems(itemSamples)
       if(xml.wrapped) {
         res[displayName] = itemSamples
@@ -376,6 +390,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
       else {
         res = itemSamples
       }
+      stack.pop();
       return res
     }
 
@@ -383,6 +398,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
     if(type === "object") {
       // case literal example
       if(typeof sample === "string") {
+        stack.pop();
         return sample
       }
       for (let propName in sample) {
@@ -404,11 +420,12 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
       if (!isEmpty(_attr)) {
         res[displayName].push({_attr: _attr})
       }
-
+      stack.pop();
       return res
     }
 
     res[displayName] = !isEmpty(_attr) ? [{_attr: _attr}, sample] : sample
+    stack.pop();
     return res
   }
 
@@ -435,6 +452,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
     }
 
     if(hasExceededMaxProperties()) {
+      stack.pop();
       return res
     }
 
@@ -447,7 +465,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
       propertyAddedCounter++
     } else if ( additionalProperties ) {
       const additionalProps = objectify(additionalProperties)
-      const additionalPropSample = sampleFromSchemaGeneric(additionalProps, config, undefined, respectXML)
+      const additionalPropSample = sampleFromSchemaGenericWith(additionalProps, config, undefined, respectXML, stack)
 
       if(respectXML && additionalProps.xml && additionalProps.xml.name && additionalProps.xml.name !== "notagname")
       {
@@ -458,6 +476,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
           : 4
         for (let i = 1; i < toGenerateCount; i++) {
           if(hasExceededMaxProperties()) {
+            stack.pop();
             return res
           }
           if(respectXML) {
@@ -471,6 +490,7 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
         }
       }
     }
+    stack.pop();
     return res
   }
 
@@ -482,13 +502,15 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
     }
 
     if(Array.isArray(items.anyOf)) {
-      sampleArray = items.anyOf.map(i => sampleFromSchemaGeneric(liftSampleHelper(items, i, config), config, undefined, respectXML))
+      sampleArray = items.anyOf.map(i => sampleFromSchemaGenericWith(liftSampleHelper(items, i, config), config, undefined, respectXML, stack))
     } else if(Array.isArray(items.oneOf)) {
-      sampleArray = items.oneOf.map(i => sampleFromSchemaGeneric(liftSampleHelper(items, i, config), config, undefined, respectXML))
+      sampleArray = items.oneOf.map(i => sampleFromSchemaGenericWith(liftSampleHelper(items, i, config), config, undefined, respectXML, stack))
     } else if(!respectXML || respectXML && xml.wrapped) {
-      sampleArray = [sampleFromSchemaGeneric(items, config, undefined, respectXML)]
+      sampleArray = [sampleFromSchemaGenericWith(items, config, undefined, respectXML, stack)]
     } else {
-      return sampleFromSchemaGeneric(items, config, undefined, respectXML)
+      let result = sampleFromSchemaGenericWith(items, config, undefined, respectXML, stack)
+      stack.pop();
+      return result;
     }
     sampleArray = handleMinMaxItems(sampleArray)
     if(respectXML && xml.wrapped) {
@@ -496,8 +518,10 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
       if (!isEmpty(_attr)) {
         res[displayName].push({_attr: _attr})
       }
+      stack.pop();
       return res
     }
+    stack.pop();
     return sampleArray
   }
 
@@ -536,17 +560,20 @@ export const sampleFromSchemaGeneric = (schema, config={}, exampleOverride = und
       }
     }
   } else {
+    stack.pop();
     return
   }
   if (type === "file") {
+    stack.pop();
     return
   }
 
   if(respectXML) {
     res[displayName] = !isEmpty(_attr) ? [{_attr: _attr}, value] : value
+    stack.pop();
     return res
   }
-
+  stack.pop();
   return value
 }
 

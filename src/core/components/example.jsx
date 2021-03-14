@@ -13,6 +13,8 @@ export default function Example(props) {
   const Markdown = getComponent("Markdown", true)
   const HighlightCode = getComponent("highlightCode")
 
+  console.log('top of example');
+
   if(!example) return null
 
   return (

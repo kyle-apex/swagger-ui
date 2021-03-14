@@ -46,12 +46,28 @@ export default {
   },
 
   [UPDATE_RESOLVED]: (state, action) => {
+    console.log('update_resolved')
     return state.setIn(["resolved"], fromJSOrdered(action.payload))
   },
 
   [UPDATE_RESOLVED_SUBTREE]: (state, action) => {
     const { value, path } = action.payload
-    return state.setIn(["resolvedSubtrees", ...path], fromJSOrdered(value))
+    console.log('update_resolvedsub', state,path,value);
+    //delete value.paths;
+    /*if (value.paths && value.paths['/api/AppUsers']) {
+      delete value.paths['/api/AppUsers'];
+      delete value.paths['/api/Addresses'];
+    }*/
+      
+    //fromJSOrdered(value)
+    fromJSOrdered(value,new WeakMap(),true,true)
+    fromJSOrdered(value,new WeakMap(),true)
+    fromJSOrdered(value,new WeakMap(),true,true)
+    fromJSOrdered(value,new WeakMap(),true)
+    fromJSOrdered(value,new WeakMap(),true,true)
+    fromJSOrdered(value,new WeakMap(),true)
+    fromJSOrdered(value,new WeakMap(),true,true)
+    return state.setIn(["resolvedSubtrees", ...path], fromJSOrdered(value,new WeakMap(),true))
   },
 
   [UPDATE_PARAM]: ( state, {payload} ) => {
@@ -120,7 +136,7 @@ export default {
 
     // Ensure headers
     result.headers = result.headers || {}
-
+    console.log('ustate')
     let newState = state.setIn( [ "responses", path, method ], fromJSOrdered(result) )
 
     // ImmutableJS messes up Blob. Needs to reset its value.
@@ -131,10 +147,12 @@ export default {
   },
 
   [SET_REQUEST]: (state, { payload: { req, path, method } } ) =>{
+    console.log('set_req')
     return state.setIn( [ "requests", path, method ], fromJSOrdered(req))
   },
 
   [SET_MUTATED_REQUEST]: (state, { payload: { req, path, method } } ) =>{
+    console.log('set_mut')
     return state.setIn( [ "mutatedRequests", path, method ], fromJSOrdered(req))
   },
 

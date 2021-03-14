@@ -32,25 +32,29 @@ const DEFAULT_RESPONSE_KEY = "default"
 
 export const isImmutable = (maybe) => Im.Iterable.isIterable(maybe)
 
-export function objectify (thing) {
-  if(!isObject(thing))
+export function objectify(thing) {
+  if (!isObject(thing))
     return {}
-  if(isImmutable(thing))
+  if (isImmutable(thing))
     return thing.toJS()
   return thing
 }
 
-export function arrayify (thing) {
-  if(!thing)
+export function arrayify(thing) {
+  if (!thing)
     return []
 
-  if(thing.toArray)
+  if (thing.toArray)
     return thing.toArray()
 
   return normalizeArray(thing)
 }
 
 export function fromJSOrdered(js) {
+  return fromJSOrderedWith(js,[]);
+}
+
+function fromJSOrderedWith(js,stack) {
   if (isImmutable(js)) {
     return js // Can't do much here
   }
@@ -60,15 +64,27 @@ export function fromJSOrdered(js) {
   if (!isObject(js)) {
     return js
   }
+  // if this is a circular reference, return an empty representation instead
+  if (~stack.indexOf(js)) {
+    return Array.isArray(js) ? new Im.List() : new Im.Map();
+  }
+  
+  stack.push(js);
+
   if (Array.isArray(js)) {
-    return Im.Seq(js).map(fromJSOrdered).toList()
+    return Im.Seq(js).map((i) => fromJSOrderedWith(i,stack)).toList()
   }
   if (isFunction(js.entries)) {
     // handle multipart/form-data
     const objWithHashedKeys = createObjWithHashedKeys(js)
-    return Im.OrderedMap(objWithHashedKeys).map(fromJSOrdered)
+    return Im.OrderedMap(objWithHashedKeys).map((i) => fromJSOrderedWith(i,stack))
   }
-  return Im.OrderedMap(js).map(fromJSOrdered)
+
+  let result = Im.OrderedMap(js).map((i) => fromJSOrderedWith(i,stack))
+
+  stack.pop();
+  
+  return result;
 }
 
 /**
@@ -89,7 +105,7 @@ export function fromJSOrdered(js) {
  * @param {FormData} fdObj - a FormData object
  * @return {Object} - a plain object
  */
-export function createObjWithHashedKeys (fdObj) {
+export function createObjWithHashedKeys(fdObj) {
   if (!isFunction(fdObj.entries)) {
     return fdObj // not a FormData object with iterable
   }
@@ -121,15 +137,15 @@ export function createObjWithHashedKeys (fdObj) {
 }
 
 export function bindToState(obj, state) {
-	var newObj = {}
-	Object.keys(obj)
-  .filter(key => typeof obj[key] === "function")
-  .forEach(key => newObj[key] = obj[key].bind(null, state))
-	return newObj
+  var newObj = {}
+  Object.keys(obj)
+    .filter(key => typeof obj[key] === "function")
+    .forEach(key => newObj[key] = obj[key].bind(null, state))
+  return newObj
 }
 
 export function normalizeArray(arr) {
-  if(Array.isArray(arr))
+  if (Array.isArray(arr))
     return arr
   return [arr]
 }
@@ -143,7 +159,7 @@ export function isObject(obj) {
 }
 
 export function isFunc(thing) {
-  return typeof(thing) === "function"
+  return typeof (thing) === "function"
 }
 
 export function isArray(thing) {
@@ -163,7 +179,7 @@ export function objMap(obj, fn) {
 export function objReduce(obj, fn) {
   return Object.keys(obj).reduce((newObj, key) => {
     let res = fn(obj[key], key)
-    if(res && typeof res === "object")
+    if (res && typeof res === "object")
       Object.assign(newObj, res)
     return newObj
   }, {})
@@ -182,9 +198,9 @@ export function systemThunkMiddleware(getSystem) {
   }
 }
 
-export function defaultStatusCode ( responses ) {
+export function defaultStatusCode(responses) {
   let codes = responses.keySeq()
-  return codes.contains(DEFAULT_RESPONSE_KEY) ? DEFAULT_RESPONSE_KEY : codes.filter( key => (key+"")[0] === "2").sort().first()
+  return codes.contains(DEFAULT_RESPONSE_KEY) ? DEFAULT_RESPONSE_KEY : codes.filter(key => (key + "")[0] === "2").sort().first()
 }
 
 
@@ -195,7 +211,7 @@ export function defaultStatusCode ( responses ) {
  * @returns {Immutable.List} either iterable.get(keys) or an empty Immutable.List
  */
 export function getList(iterable, keys) {
-  if(!Im.Iterable.isIterable(iterable)) {
+  if (!Im.Iterable.isIterable(iterable)) {
     return Im.List()
   }
   let val = iterable.getIn(Array.isArray(keys) ? keys : [keys])
@@ -209,26 +225,26 @@ export function getList(iterable, keys) {
  * @param {String} key the key to use, when merging the `key`
  * @returns {Immutable.List}
  */
-export function mapToList(map, keyNames="key", collectedKeys=Im.Map()) {
-  if(!Im.Map.isMap(map) || !map.size) {
+export function mapToList(map, keyNames = "key", collectedKeys = Im.Map()) {
+  if (!Im.Map.isMap(map) || !map.size) {
     return Im.List()
   }
 
-  if(!Array.isArray(keyNames)) {
-    keyNames = [ keyNames ]
+  if (!Array.isArray(keyNames)) {
+    keyNames = [keyNames]
   }
 
-  if(keyNames.length < 1) {
+  if (keyNames.length < 1) {
     return map.merge(collectedKeys)
   }
 
   // I need to avoid `flatMap` from merging in the Maps, as well as the lists
   let list = Im.List()
   let keyName = keyNames[0]
-  for(let entry of map.entries()) {
+  for (let entry of map.entries()) {
     let [key, val] = entry
     let nextList = mapToList(val, keyNames.slice(1), collectedKeys.set(keyName, key))
-    if(Im.List.isList(nextList)) {
+    if (Im.List.isList(nextList)) {
       list = list.concat(nextList)
     } else {
       list = list.push(nextList)
@@ -238,7 +254,7 @@ export function mapToList(map, keyNames="key", collectedKeys=Im.Map()) {
   return list
 }
 
-export function extractFileNameFromContentDispositionHeader(value){
+export function extractFileNameFromContentDispositionHeader(value) {
   let patterns = [
     /filename\*=[^']+'\w*'"([^"]+)";?/i,
     /filename\*=[^']+'\w*'([^;]+);?/i,
@@ -255,7 +271,7 @@ export function extractFileNameFromContentDispositionHeader(value){
   if (responseFilename !== null && responseFilename.length > 1) {
     try {
       return decodeURIComponent(responseFilename[1])
-    } catch(e) {
+    } catch (e) {
       console.error(e)
     }
   }
@@ -278,91 +294,91 @@ export function pascalCaseFilename(filename) {
 // - If immutable, use .is()
 // - if in explicit objectList, then compare using _.eq
 // - else use ===
-export const propChecker = (props, nextProps, objectList=[], ignoreList=[]) => {
+export const propChecker = (props, nextProps, objectList = [], ignoreList = []) => {
 
-  if(Object.keys(props).length !== Object.keys(nextProps).length) {
+  if (Object.keys(props).length !== Object.keys(nextProps).length) {
     return true
   }
 
   return (
     some(props, (a, name) => {
-      if(ignoreList.includes(name)) {
+      if (ignoreList.includes(name)) {
         return false
       }
       let b = nextProps[name]
 
-      if(Im.Iterable.isIterable(a)) {
-        return !Im.is(a,b)
+      if (Im.Iterable.isIterable(a)) {
+        return !Im.is(a, b)
       }
 
       // Not going to compare objects
-      if(typeof a === "object" && typeof b === "object") {
+      if (typeof a === "object" && typeof b === "object") {
         return false
       }
 
       return a !== b
     })
-    || objectList.some( objectPropName => !eq(props[objectPropName], nextProps[objectPropName])))
+    || objectList.some(objectPropName => !eq(props[objectPropName], nextProps[objectPropName])))
 }
 
-export const validateMaximum = ( val, max ) => {
+export const validateMaximum = (val, max) => {
   if (val > max) {
     return `Value must be less than ${max}`
   }
 }
 
-export const validateMinimum = ( val, min ) => {
+export const validateMinimum = (val, min) => {
   if (val < min) {
     return `Value must be greater than ${min}`
   }
 }
 
-export const validateNumber = ( val ) => {
+export const validateNumber = (val) => {
   if (!/^-?\d+(\.?\d+)?$/.test(val)) {
     return "Value must be a number"
   }
 }
 
-export const validateInteger = ( val ) => {
+export const validateInteger = (val) => {
   if (!/^-?\d+$/.test(val)) {
     return "Value must be an integer"
   }
 }
 
-export const validateFile = ( val ) => {
-  if ( val && !(val instanceof win.File) ) {
+export const validateFile = (val) => {
+  if (val && !(val instanceof win.File)) {
     return "Value must be a file"
   }
 }
 
-export const validateBoolean = ( val ) => {
-  if ( !(val === "true" || val === "false" || val === true || val === false) ) {
+export const validateBoolean = (val) => {
+  if (!(val === "true" || val === "false" || val === true || val === false)) {
     return "Value must be a boolean"
   }
 }
 
-export const validateString = ( val ) => {
-  if ( val && typeof val !== "string" ) {
+export const validateString = (val) => {
+  if (val && typeof val !== "string") {
     return "Value must be a string"
   }
 }
 
 export const validateDateTime = (val) => {
-    if (isNaN(Date.parse(val))) {
-        return "Value must be a DateTime"
-    }
+  if (isNaN(Date.parse(val))) {
+    return "Value must be a DateTime"
+  }
 }
 
 export const validateGuid = (val) => {
-    val = val.toString().toLowerCase()
-    if (!/^[{(]?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[)}]?$/.test(val)) {
-        return "Value must be a Guid"
-    }
+  val = val.toString().toLowerCase()
+  if (!/^[{(]?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[)}]?$/.test(val)) {
+    return "Value must be a Guid"
+  }
 }
 
 export const validateMaxLength = (val, max) => {
   if (val.length > max) {
-      return `Value must be no longer than ${max} character${max !== 1 ? "s" : ""}`
+    return `Value must be no longer than ${max} character${max !== 1 ? "s" : ""}`
   }
 }
 
@@ -374,15 +390,15 @@ export const validateUniqueItems = (val, uniqueItems) => {
     const list = fromJS(val)
     const set = list.toSet()
     const hasDuplicates = val.length > set.size
-    if(hasDuplicates) {
+    if (hasDuplicates) {
       let errorsPerIndex = Set()
       list.forEach((item, i) => {
-        if(list.filter(v => isFunc(v.equals) ? v.equals(item) : v === item).size > 1) {
+        if (list.filter(v => isFunc(v.equals) ? v.equals(item) : v === item).size > 1) {
           errorsPerIndex = errorsPerIndex.add(i)
         }
       })
-      if(errorsPerIndex.size !== 0) {
-        return errorsPerIndex.map(i => ({index: i, error: "No duplicates allowed."})).toArray()
+      if (errorsPerIndex.size !== 0) {
+        return errorsPerIndex.map(i => ({ index: i, error: "No duplicates allowed." })).toArray()
       }
     }
   }
@@ -390,7 +406,7 @@ export const validateUniqueItems = (val, uniqueItems) => {
 
 export const validateMinItems = (val, min) => {
   if (!val && min >= 1 || val && val.length < min) {
-      return `Array must contain at least ${min} item${min === 1 ? "" : "s"}`
+    return `Array must contain at least ${min} item${min === 1 ? "" : "s"}`
   }
 }
 
@@ -402,19 +418,19 @@ export const validateMaxItems = (val, max) => {
 
 export const validateMinLength = (val, min) => {
   if (val.length < min) {
-      return `Value must be at least ${min} character${min !== 1 ? "s" : ""}`
+    return `Value must be at least ${min} character${min !== 1 ? "s" : ""}`
   }
 }
 
 export const validatePattern = (val, rxPattern) => {
   var patt = new RegExp(rxPattern)
   if (!patt.test(val)) {
-      return "Value must follow pattern " + rxPattern
+    return "Value must follow pattern " + rxPattern
   }
 }
 
 function validateValueBySchema(value, schema, requiredByParam, bypassRequiredCheck, parameterContentMediaType) {
-  if(!schema) return []
+  if (!schema) return []
   let errors = []
   let nullable = schema.get("nullable")
   let requiredBySchema = schema.get("required")
@@ -447,7 +463,7 @@ function validateValueBySchema(value, schema, requiredByParam, bypassRequiredChe
     || !type
     || !requiresFurtherValidation
 
-  if(noFurtherValidationNeeded) {
+  if (noFurtherValidationNeeded) {
     return []
   }
 
@@ -480,7 +496,7 @@ function validateValueBySchema(value, schema, requiredByParam, bypassRequiredChe
       parameterContentMediaType === "application/json")
   ) {
     let objectVal = value
-    if(typeof value === "string") {
+    if (typeof value === "string") {
       try {
         objectVal = JSON.parse(value)
       } catch (e) {
@@ -488,14 +504,14 @@ function validateValueBySchema(value, schema, requiredByParam, bypassRequiredChe
         return errors
       }
     }
-    if(schema && schema.has("required") && isFunc(requiredBySchema.isList) && requiredBySchema.isList()) {
+    if (schema && schema.has("required") && isFunc(requiredBySchema.isList) && requiredBySchema.isList()) {
       requiredBySchema.forEach(key => {
-        if(objectVal[key] === undefined) {
+        if (objectVal[key] === undefined) {
           errors.push({ propKey: key, error: "Required property not found" })
         }
       })
     }
-    if(schema && schema.has("properties")) {
+    if (schema && schema.has("properties")) {
       schema.get("properties").forEach((val, key) => {
         const errs = validateValueBySchema(objectVal[key], val, false, bypassRequiredCheck, parameterContentMediaType)
         errors.push(...errs
@@ -577,7 +593,7 @@ function validateValueBySchema(value, schema, requiredByParam, bypassRequiredChe
     if (!(arrayCheck || arrayListCheck)) {
       return errors
     }
-    if(value) {
+    if (value) {
       value.forEach((item, i) => {
         const errs = validateValueBySchema(item, schema.get("items"), false, bypassRequiredCheck, parameterContentMediaType)
         errors.push(...errs
@@ -630,6 +646,8 @@ const defaultStringifyTypes = ["object"]
 
 const getStringifiedSampleForSchema = (schema, config, contentType, exampleOverride) => {
   const res = memoizedSampleFromSchema(schema, config, exampleOverride)
+  console.log('getStringifiedSampleForSchema res', res)
+  console.log('getStringifiedSampleForSchema config', config)
   const resType = typeof res
 
   const typesToStringify = shouldStringifyTypesConfig.reduce(
@@ -638,9 +656,30 @@ const getStringifiedSampleForSchema = (schema, config, contentType, exampleOverr
       : types,
     defaultStringifyTypes)
 
-  return some(typesToStringify, x => x === resType)
-    ? JSON.stringify(res, null, 2)
+  let result = some(typesToStringify, x => x === resType)
+    ? stringifyWithDepth(res, 2, config)
     : res
+    console.log('res',res);
+  return result;
+}
+
+const stringifyWithDepth = (val, space, config = {}) => {
+  let depth = isNaN(+config.maxModelExpandDepth) ? -1 : config.maxModelExpandDepth;
+
+  return depth > -1 ? JSON.stringify(pruneObjectToDepth(val, depth), null, space) : JSON.stringify(val, null, space);
+}
+
+const pruneObjectToDepth = (val, depth) => {
+  let isArray, obj;
+  return !val || typeof val != 'object' ? val : (
+    isArray = Array.isArray(val),
+    JSON.stringify(val, function (key, v) {
+      if (isArray || depth > 0) {
+        if (!key) return (isArray = Array.isArray(v), val = v);
+        !obj && (obj = isArray ? [] : {});
+        obj[key] = Array.isArray(v) && depth === 1 ? [] : pruneObjectToDepth(v, isArray ? depth : depth - 1);
+      }
+    }), obj || (isArray ? [] : {}));
 }
 
 const getYamlSampleSchema = (schema, config, contentType, exampleOverride) => {
@@ -651,7 +690,7 @@ const getYamlSampleSchema = (schema, config, contentType, exampleOverride) => {
 
       lineWidth: -1 // don't generate line folds
     })
-    if(yamlString[yamlString.length - 1] === "\n") {
+    if (yamlString[yamlString.length - 1] === "\n") {
       yamlString = yamlString.slice(0, yamlString.length - 1)
     }
   } catch (e) {
@@ -662,10 +701,10 @@ const getYamlSampleSchema = (schema, config, contentType, exampleOverride) => {
     .replace(/\t/g, "  ")
 }
 
-export const getSampleSchema = (schema, contentType="", config={}, exampleOverride = undefined) => {
-  if(schema && isFunc(schema.toJS))
+export const getSampleSchema = (schema, contentType = "", config = {}, exampleOverride = undefined) => {
+  if (schema && isFunc(schema.toJS))
     schema = schema.toJS()
-  if(exampleOverride && isFunc(exampleOverride.toJS))
+  if (exampleOverride && isFunc(exampleOverride.toJS))
     exampleOverride = exampleOverride.toJS()
 
   if (/xml/.test(contentType)) {
@@ -681,10 +720,10 @@ export const parseSearch = () => {
   let map = {}
   let search = win.location.search
 
-  if(!search)
+  if (!search)
     return {}
 
-  if ( search != "" ) {
+  if (search != "") {
     let params = search.substr(1).split("&")
 
     for (let i in params) {
@@ -733,21 +772,21 @@ export const buildFormData = (data) => {
   for (let name in data) {
     let val = data[name]
     if (val !== undefined && val !== "") {
-      formArr.push([name, "=", encodeURIComponent(val).replace(/%20/g,"+")].join(""))
+      formArr.push([name, "=", encodeURIComponent(val).replace(/%20/g, "+")].join(""))
     }
   }
   return formArr.join("&")
 }
 
 // Is this really required as a helper? Perhaps. TODO: expose the system of presets.apis in docs, so we know what is supported
-export const shallowEqualKeys = (a,b, keys) => {
+export const shallowEqualKeys = (a, b, keys) => {
   return !!find(keys, (key) => {
     return eq(a[key], b[key])
   })
 }
 
 export function sanitizeUrl(url) {
-  if(typeof url !== "string" || url === "") {
+  if (typeof url !== "string" || url === "") {
     return ""
   }
 
@@ -763,12 +802,12 @@ export function requiresValidationURL(uri) {
 
 
 export function getAcceptControllingResponse(responses) {
-  if(!Im.OrderedMap.isOrderedMap(responses)) {
+  if (!Im.OrderedMap.isOrderedMap(responses)) {
     // wrong type!
     return null
   }
 
-  if(!responses.size) {
+  if (!responses.size) {
     // responses is empty
     return null
   }
@@ -788,7 +827,7 @@ export function getAcceptControllingResponse(responses) {
 // suitable for use in URL fragments
 export const createDeepLinkPath = (str) => typeof str == "string" || str instanceof String ? str.trim().replace(/\s/g, "%20") : ""
 // suitable for use in CSS classes and ids
-export const escapeDeepLinkPath = (str) => cssEscape( createDeepLinkPath(str).replace(/%20/g, "_") )
+export const escapeDeepLinkPath = (str) => cssEscape(createDeepLinkPath(str).replace(/%20/g, "_"))
 
 export const getExtensions = (defObj) => defObj.filter((v, k) => /^x-/.test(k))
 export const getCommonExtensions = (defObj) => defObj.filter((v, k) => /^pattern|maxLength|minLength|maximum|minimum/.test(k))
@@ -798,14 +837,14 @@ export const getCommonExtensions = (defObj) => defObj.filter((v, k) => /^pattern
 // `predicate` can be used to discriminate the stripping further,
 // by preserving the key's place in the object based on its value.
 export function deeplyStripKey(input, keyToStrip, predicate = () => true) {
-  if(typeof input !== "object" || Array.isArray(input) || input === null || !keyToStrip) {
+  if (typeof input !== "object" || Array.isArray(input) || input === null || !keyToStrip) {
     return input
   }
 
   const obj = Object.assign({}, input)
 
   Object.keys(obj).forEach(k => {
-    if(k === keyToStrip && predicate(obj[k], k)) {
+    if (k === keyToStrip && predicate(obj[k], k)) {
       delete obj[k]
       return
     }
@@ -833,7 +872,7 @@ export function stringify(thing) {
     }
   }
 
-  if(thing === null || thing === undefined) {
+  if (thing === null || thing === undefined) {
     return ""
   }
 
@@ -841,7 +880,7 @@ export function stringify(thing) {
 }
 
 export function numberToString(thing) {
-  if(typeof thing === "number") {
+  if (typeof thing === "number") {
     return thing.toString()
   }
 
@@ -849,7 +888,7 @@ export function numberToString(thing) {
 }
 
 export function paramToIdentifier(param, { returnAll = false, allowHashes = true } = {}) {
-  if(!Im.Map.isMap(param)) {
+  if (!Im.Map.isMap(param)) {
     throw new Error("paramToIdentifier: received a non-Im.Map parameter as input")
   }
   const paramName = param.get("name")
@@ -863,7 +902,7 @@ export function paramToIdentifier(param, { returnAll = false, allowHashes = true
     generatedIdentifiers.push(`${paramIn}.${paramName}.hash-${param.hashCode()}`)
   }
 
-  if(paramIn && paramName) {
+  if (paramIn && paramName) {
     generatedIdentifiers.push(`${paramIn}.${paramName}`)
   }
 
@@ -897,10 +936,10 @@ export function generateCodeVerifier() {
 
 export function createCodeChallenge(codeVerifier) {
   return b64toB64UrlEncoded(
-      shaJs("sha256")
+    shaJs("sha256")
       .update(codeVerifier)
       .digest("base64")
-    )
+  )
 }
 
 function b64toB64UrlEncoded(str) {

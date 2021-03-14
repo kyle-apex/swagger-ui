@@ -41,6 +41,7 @@ export default class Model extends ImmutablePureComponent {
     const ObjectModel = getComponent("ObjectModel")
     const ArrayModel = getComponent("ArrayModel")
     const PrimitiveModel = getComponent("PrimitiveModel")
+    console.log('top of model.jsx render');
     let type = "object"
     let $$ref = schema && schema.get("$$ref")
 
@@ -53,6 +54,8 @@ export default class Model extends ImmutablePureComponent {
       schema = this.getRefSchema( name )
     }
 
+    console.log('schema',schema);
+
     if(!schema) {
       return <span className="model model-title">
               <span className="model-title__text">{ displayName || name }</span>
@@ -63,6 +66,9 @@ export default class Model extends ImmutablePureComponent {
     const deprecated = specSelectors.isOAS3() && schema.get("deprecated")
     isRef = isRef !== undefined ? isRef : !!$$ref
     type = schema && schema.get("type") || type
+
+    console.log('type',type);
+    
 
     switch(type) {
       case "object":
